@@ -395,7 +395,9 @@
     display: flex; align-items: center; justify-content: center;
     color: var(--gold);
     font-size: 0.85rem;
+    cursor: pointer;
   }
+  .fav-btn.active{ color: var(--pink); background: rgba(255,111,174,0.25); }
 
   .card-body{ padding: 16px 18px 20px; }
 
@@ -998,6 +1000,47 @@
       }
     }
 
+    async function loadVouchSummary() {
+      try {
+        const res = await fetch(API_BASE + '/api/vouches/summary?limit=4');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.recent || !data.recent.length) return; // keine echten Vouches -> Demo-Karten bleiben stehen
+
+        const avg = data.avg_rating != null ? data.avg_rating : 5;
+        document.querySelector('.rating-summary .score').textContent = avg.toFixed(1);
+        document.querySelector('.rating-summary .stars').textContent = _ratingStars(Math.round(avg));
+        document.querySelector('.rating-summary .count').textContent =
+          `Insgesamt schon ${data.rated_count} Bewertungen.`;
+
+        const grid = document.querySelector('.review-grid');
+        grid.innerHTML = data.recent.map(v => {
+          const name = (v.giver_name || 'Anonym').replace(/#\d{4}$/, '');
+          const initial = name.trim().charAt(0).toUpperCase() || '?';
+          const stars = v.rating != null ? _ratingStars(v.rating) : (v.is_positive ? '★★★★★' : '★★☆☆☆');
+          const date = v.created_at
+            ? new Date(v.created_at * 1000).toLocaleDateString('de-DE')
+            : '';
+          return `
+            <div class="review-card glass">
+              <div class="review-head">
+                <div class="review-avatar">${initial}</div>
+                <div><div class="review-name">${name}</div><div class="review-date">Verifizierter Kauf${date ? ' · ' + date : ''}</div></div>
+              </div>
+              <div class="review-stars">${stars}</div>
+            </div>
+          `;
+        }).join('');
+      } catch (e) {
+        // Backend nicht erreichbar -> statische Platzhalterkarten bleiben stehen
+      }
+    }
+
+    function _ratingStars(rating) {
+      const r = Math.max(1, Math.min(5, rating));
+      return '★'.repeat(r) + '☆'.repeat(5 - r);
+    }
+
     async function loadSession() {
       const btn = document.getElementById('loginBtn');
       const menu = document.getElementById('profileMenu');
@@ -1069,6 +1112,7 @@
     }
 
     loadStats();
+    loadVouchSummary();
     loadSession();
     loadProducts();
 
@@ -1273,7 +1317,17 @@
         `).join('');
 
         grid.querySelectorAll('.card').forEach(card => {
-          card.addEventListener('click', () => openProductModal(JSON.parse(card.dataset.product.replace(/&apos;/g, "'"))));
+          const product = JSON.parse(card.dataset.product.replace(/&apos;/g, "'"));
+          card.addEventListener('click', () => openProductModal(product));
+          const fav = card.querySelector('.fav-btn');
+          if (fav) {
+            if (getList('txte_wishlist').some(x => x.id === product.id)) fav.classList.add('active');
+            fav.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const nowFav = toggleWishlist(product);
+              fav.classList.toggle('active', nowFav);
+            });
+          }
         });
       } catch (e) {
         // Backend nicht erreichbar -> statische Demo-Karten bleiben stehen
