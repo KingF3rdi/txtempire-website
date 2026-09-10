@@ -1581,8 +1581,9 @@
     document.getElementById('orderResultClose').addEventListener('click', () => {
       document.getElementById('orderResultModal').style.display = 'none';
     });
-    document.getElementById('orderResultCopyBtn').addEventListener('click', () => {
+    document.getElementById('orderResultCopyBtn').addEventListener('click', (e) => {
       navigator.clipboard.writeText(document.getElementById('orderResultCommand').textContent);
+      copyFeedback(e.currentTarget);
     });
 
     // ---------- Meine Downloads ----------
@@ -1641,16 +1642,21 @@
       ingameStatusInterval = setInterval(() => checkIngameStatus(data.code), 4000);
     }
 
-    async function checkIngameStatus(code) {
+    async function checkIngameStatus(code, manual = false) {
+      const statusText = document.getElementById('ingameStatusText');
       try {
         const res = await fetch(API_BASE + '/api/auth/ingame/status?code=' + encodeURIComponent(code), { credentials: 'include' });
         const data = await res.json();
         if (data.confirmed) {
           clearInterval(ingameStatusInterval);
-          document.getElementById('ingameStatusText').textContent = 'Verbunden! Lade neu...';
+          statusText.textContent = 'Verbunden! Lade neu...';
           setTimeout(() => location.reload(), 1000);
+        } else if (manual) {
+          statusText.textContent = 'Noch keine Nachricht empfangen — hast du den Befehl schon ingame geschickt?';
         }
-      } catch (e) {}
+      } catch (e) {
+        if (manual) statusText.textContent = 'Prüfung fehlgeschlagen, versuch es gleich nochmal.';
+      }
     }
 
     document.getElementById('ingameNameSubmit').addEventListener('click', submitIngameName);
@@ -1660,13 +1666,24 @@
     document.getElementById('ingameNameCancel').addEventListener('click', () => {
       document.getElementById('ingameLoginModal').style.display = 'none';
     });
-    document.getElementById('ingameStatusBtn').addEventListener('click', () => {
+    document.getElementById('ingameStatusBtn').addEventListener('click', (e) => {
       const code = document.getElementById('ingameCommand').textContent.split(' ').pop();
-      checkIngameStatus(code);
+      checkIngameStatus(code, true);
+      const btn = e.currentTarget;
+      const original = btn.textContent;
+      btn.textContent = 'Prüfe...';
+      btn.disabled = true;
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1500);
     });
-    document.getElementById('ingameCopyBtn').addEventListener('click', () => {
+    document.getElementById('ingameCopyBtn').addEventListener('click', (e) => {
       navigator.clipboard.writeText(document.getElementById('ingameCommand').textContent);
+      copyFeedback(e.currentTarget);
     });
+    function copyFeedback(btn) {
+      const original = btn.textContent;
+      btn.textContent = '✓ Kopiert';
+      setTimeout(() => { btn.textContent = original; }, 1500);
+    }
     document.getElementById('ingameCloseBtn').addEventListener('click', () => {
       document.getElementById('ingameLoginModal').style.display = 'none';
       clearInterval(ingameStatusInterval);
