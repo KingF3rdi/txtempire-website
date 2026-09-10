@@ -633,9 +633,10 @@
         <div class="glass" style="max-width:440px; width:100%; border-radius:20px; padding:28px;">
           <div class="card-eyebrow" style="color:var(--pink-soft);">BESTELLUNG ANGELEGT</div>
           <h2 id="orderResultTitle" style="font-family:'Baloo 2',sans-serif; font-size:1.3rem; margin:8px 0 14px;"></h2>
-          <p style="color:var(--muted); font-size:0.85rem; margin-bottom:14px;">Sende diesen Betrag ingame und gib den Referenz-Code mit an. Dein Ingame-Bot bestätigt automatisch — falls das nicht klappt, bestätigt der Owner deine Zahlung manuell im Admin-Panel.</p>
-          <div class="glass" style="padding:14px 16px; border-radius:12px; margin-bottom:18px;">
-            <code id="orderResultCode" style="font-size:1rem;"></code>
+          <p style="color:var(--muted); font-size:0.85rem; margin-bottom:14px;">Gib diesen Befehl ingame ein, um zu bezahlen. Dein Ingame-Bot bestätigt automatisch — falls das nicht klappt, bestätigt der Owner deine Zahlung manuell im Admin-Panel (Referenz-Code: <code id="orderResultCode"></code>).</p>
+          <div class="glass" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-radius:12px; margin-bottom:18px;">
+            <code id="orderResultCommand" style="font-size:0.9rem; word-break:break-all;"></code>
+            <button id="orderResultCopyBtn" class="btn-primary" style="padding:8px 18px; font-size:0.8rem; white-space:nowrap;">Kopieren</button>
           </div>
           <button id="orderResultClose" class="btn-primary" style="padding:10px 22px; font-size:0.85rem;">Verstanden</button>
         </div>
@@ -1498,6 +1499,8 @@
       if (data.ok) {
         document.getElementById('orderResultTitle').textContent = `${data.product_name} — ${data.price} €`;
         document.getElementById('orderResultCode').textContent = data.reference_code;
+        const amountText = Number.isInteger(data.price) ? String(data.price) : String(data.price).replace(/0+$/, '').replace(/\.$/, '');
+        document.getElementById('orderResultCommand').textContent = `/pay TxTEmpire ${amountText}`;
         document.getElementById('orderResultModal').style.display = 'flex';
       } else {
         alert('Fehler: ' + (data.error || 'unbekannt'));
@@ -1512,6 +1515,9 @@
     });
     document.getElementById('orderResultClose').addEventListener('click', () => {
       document.getElementById('orderResultModal').style.display = 'none';
+    });
+    document.getElementById('orderResultCopyBtn').addEventListener('click', () => {
+      navigator.clipboard.writeText(document.getElementById('orderResultCommand').textContent);
     });
 
     // ---------- Meine Downloads ----------
