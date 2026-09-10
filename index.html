@@ -547,9 +547,14 @@
       </nav>
     </div>
     <div class="nav-right">
-      <div class="lang-pill glass">
-        <span class="flag">🇩🇪</span>
-        <span>Deutsch<span class="lang-sub">Aktiv</span></span>
+      <div style="position:relative;">
+        <button id="langPillBtn" class="lang-pill glass" style="border:none; cursor:pointer;">
+          <span class="flag">🇩🇪</span>
+          <span>Deutsch<span class="lang-sub">Aktiv</span></span>
+        </button>
+        <div id="langPanel" class="glass" style="display:none; position:absolute; top:calc(100% + 10px); right:0; min-width:220px; border-radius:14px; padding:14px; z-index:70; font-size:0.82rem; color:var(--muted);">
+          Aktuell nur auf Deutsch verfügbar. Weitere Sprachen sind geplant.
+        </div>
       </div>
       <div style="position:relative;">
         <a class="icon-btn" href="#" id="wishlistBtn" aria-label="Wunschliste">♡<span class="badge" id="wishlistBadge">0</span></a>
@@ -1313,8 +1318,25 @@
 
         if (!products.length) return; // Backend noch leer -> Demo-Karten im HTML bleiben stehen
 
+        // Echte Produktzahlen pro Kategorie-Kachel (Zuordnung über den
+        // Kategorienamen, da die Kacheln statisch im HTML stehen).
+        const countsByName = {};
+        for (const p of products) {
+          const cname = (categoryMap[p.category_id] || '').trim().toLowerCase();
+          if (cname) countsByName[cname] = (countsByName[cname] || 0) + 1;
+        }
+        document.querySelectorAll('.cat-tile').forEach(tile => {
+          const h3 = tile.querySelector('h3');
+          const countEl = tile.querySelector('.count');
+          if (!h3 || !countEl) return;
+          const name = h3.textContent.trim().toLowerCase();
+          const n = countsByName[name] || 0;
+          countEl.textContent = `${n} Produkt${n === 1 ? '' : 'e'}`;
+        });
+
+        const sorted = [...products].sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0));
         const grid = document.querySelector('#bestseller .card-grid');
-        grid.innerHTML = products.map(p => `
+        grid.innerHTML = sorted.slice(0, 8).map(p => `
           <div class="card glass" data-product='${JSON.stringify(p).replace(/'/g, "&apos;")}' style="cursor:pointer;">
             <div class="card-thumb" style="background-image:url('${(p.media_urls && p.media_urls[0]) || ''}'); background-size:cover; background-position:center;">
               <span class="fav-btn">★</span>
@@ -1324,6 +1346,7 @@
               <h3>${p.name}</h3>
               <div class="card-foot">
                 <span class="card-price">${p.price} €</span>
+                ${p.sales_count ? `<span class="card-sub">${p.sales_count} Käufe</span>` : ''}
               </div>
             </div>
           </div>
@@ -1470,7 +1493,14 @@
     document.addEventListener('click', () => {
       document.getElementById('wishlistPanel').style.display = 'none';
       document.getElementById('cartPanel').style.display = 'none';
+      document.getElementById('langPanel').style.display = 'none';
     });
+    document.getElementById('langPillBtn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const panel = document.getElementById('langPanel');
+      panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+    });
+    document.getElementById('langPanel').addEventListener('click', (e) => e.stopPropagation());
     updateBadges();
 
     // Modal-Buttons: Favorisieren / In den Warenkorb / Jetzt kaufen
