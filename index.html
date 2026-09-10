@@ -619,7 +619,11 @@
         <div class="glass" style="max-width:420px; width:100%; border-radius:20px; padding:28px;">
           <div class="card-eyebrow" style="color:var(--pink-soft);">BESTELLUNG</div>
           <h2 style="font-family:'Baloo 2',sans-serif; font-size:1.4rem; margin:8px 0 10px;">Wie lautet dein Ingame-Name?</h2>
-          <p style="color:var(--muted); font-size:0.85rem; margin-bottom:16px;">Wir brauchen deinen Minecraft-Namen, um deine Ingame-Zahlung zuzuordnen.</p>
+          <p style="color:var(--muted); font-size:0.85rem; margin-bottom:16px;">Wir brauchen deinen Minecraft-Namen, um deine Zahlung zuzuordnen.</p>
+          <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <button id="payMethodIngame" class="btn-primary" data-method="ingame" style="flex:1; padding:9px 14px; font-size:0.82rem;">🎮 Ingame</button>
+            <button id="payMethodPaypal" class="btn-ghost glass" data-method="paypal" style="flex:1; padding:9px 14px; font-size:0.82rem;">💳 PayPal (0,19 €/Pack)</button>
+          </div>
           <input id="orderNameInput" placeholder="Dein Minecraft-Name" style="width:100%; background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:12px; color:var(--text); padding:12px 16px; font-size:0.95rem; margin-bottom:18px;">
           <div style="display:flex; gap:10px;">
             <button id="orderNameSubmit" class="btn-primary" style="padding:10px 22px; font-size:0.85rem;">Bestellung anlegen</button>
@@ -633,10 +637,18 @@
         <div class="glass" style="max-width:440px; width:100%; border-radius:20px; padding:28px;">
           <div class="card-eyebrow" style="color:var(--pink-soft);">BESTELLUNG ANGELEGT</div>
           <h2 id="orderResultTitle" style="font-family:'Baloo 2',sans-serif; font-size:1.3rem; margin:8px 0 14px;"></h2>
-          <p style="color:var(--muted); font-size:0.85rem; margin-bottom:14px;">Gib diesen Befehl ingame ein, um zu bezahlen. Dein Ingame-Bot bestätigt automatisch — falls das nicht klappt, bestätigt der Owner deine Zahlung manuell im Admin-Panel (Referenz-Code: <code id="orderResultCode"></code>).</p>
-          <div class="glass" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-radius:12px; margin-bottom:18px;">
-            <code id="orderResultCommand" style="font-size:0.9rem; word-break:break-all;"></code>
-            <button id="orderResultCopyBtn" class="btn-primary" style="padding:8px 18px; font-size:0.8rem; white-space:nowrap;">Kopieren</button>
+          <p style="color:var(--muted); font-size:0.85rem; margin-bottom:14px;">Referenz-Code: <code id="orderResultCode"></code></p>
+
+          <div id="orderResultIngameBox">
+            <p style="color:var(--muted); font-size:0.85rem; margin-bottom:14px;">Gib diesen Befehl ingame ein, um zu bezahlen. Dein Ingame-Bot bestätigt automatisch — falls das nicht klappt, bestätigt der Owner deine Zahlung manuell im Admin-Panel.</p>
+            <div class="glass" style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; border-radius:12px; margin-bottom:18px;">
+              <code id="orderResultCommand" style="font-size:0.9rem; word-break:break-all;"></code>
+              <button id="orderResultCopyBtn" class="btn-primary" style="padding:8px 18px; font-size:0.8rem; white-space:nowrap;">Kopieren</button>
+            </div>
+          </div>
+
+          <div id="orderResultPaypal" hidden>
+            <p style="color:var(--muted); font-size:0.85rem; margin-bottom:14px;">Sende <strong id="orderResultPaypalAmount" style="color:var(--gold);"></strong> per PayPal (Freunde/Familie) an <code id="orderResultPaypalEmail"></code> und schick uns danach einen Zahlungsbeleg in deinem Ticket/DM. Der Owner bestätigt manuell.</p>
           </div>
           <button id="orderResultClose" class="btn-primary" style="padding:10px 22px; font-size:0.85rem;">Verstanden</button>
         </div>
@@ -1482,9 +1494,21 @@
         return;
       }
       document.getElementById('orderNameInput').value = '';
+      selectPayMethod('ingame');
       document.getElementById('orderNameModal').style.display = 'flex';
       document.getElementById('orderNameInput').focus();
     });
+
+    let selectedPayMethod = 'ingame';
+    function selectPayMethod(method) {
+      selectedPayMethod = method;
+      const ingameBtn = document.getElementById('payMethodIngame');
+      const paypalBtn = document.getElementById('payMethodPaypal');
+      ingameBtn.className = method === 'ingame' ? 'btn-primary' : 'btn-ghost glass';
+      paypalBtn.className = method === 'paypal' ? 'btn-primary' : 'btn-ghost glass';
+    }
+    document.getElementById('payMethodIngame').addEventListener('click', () => selectPayMethod('ingame'));
+    document.getElementById('payMethodPaypal').addEventListener('click', () => selectPayMethod('paypal'));
 
     async function submitOrderName() {
       const mcName = document.getElementById('orderNameInput').value.trim();
@@ -1499,8 +1523,19 @@
       if (data.ok) {
         document.getElementById('orderResultTitle').textContent = `${data.product_name} — ${data.price} €`;
         document.getElementById('orderResultCode').textContent = data.reference_code;
-        const amountText = Number.isInteger(data.price) ? String(data.price) : String(data.price).replace(/0+$/, '').replace(/\.$/, '');
-        document.getElementById('orderResultCommand').textContent = `/pay TxTEmpire ${amountText}`;
+        const ingameBox = document.getElementById('orderResultIngameBox');
+        const paypalBox = document.getElementById('orderResultPaypal');
+        if (selectedPayMethod === 'paypal') {
+          document.getElementById('orderResultPaypalAmount').textContent = (0.19).toFixed(2) + ' €';
+          document.getElementById('orderResultPaypalEmail').textContent = 'k1ngf3rdi@gmail.com';
+          ingameBox.hidden = true;
+          paypalBox.hidden = false;
+        } else {
+          const amountText = Number.isInteger(data.price) ? String(data.price) : String(data.price).replace(/0+$/, '').replace(/\.$/, '');
+          document.getElementById('orderResultCommand').textContent = `/pay TxTEmpire ${amountText}`;
+          ingameBox.hidden = false;
+          paypalBox.hidden = true;
+        }
         document.getElementById('orderResultModal').style.display = 'flex';
       } else {
         alert('Fehler: ' + (data.error || 'unbekannt'));
