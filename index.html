@@ -567,6 +567,7 @@
       <div style="position:relative;">
         <a href="#anmelden" class="nav-cta" id="loginBtn">Anmelden</a>
         <div id="profileMenu" class="glass" style="display:none; position:absolute; top:calc(100% + 10px); right:0; min-width:170px; border-radius:14px; padding:8px; flex-direction:column; gap:2px; z-index:70;">
+          <a href="#profil" id="profileLink" style="padding:9px 14px; border-radius:10px; font-size:0.85rem;">👤 Mein Profil</a>
           <a href="#" id="adminLink" style="display:none; padding:9px 14px; border-radius:10px; font-size:0.85rem;">⚙️ Admin-Panel</a>
           <a href="#" id="downloadsLink" style="padding:9px 14px; border-radius:10px; font-size:0.85rem;">📦 Meine Downloads</a>
           <a href="#" id="logoutLink" style="padding:9px 14px; border-radius:10px; font-size:0.85rem;">↩ Abmelden</a>
@@ -866,6 +867,42 @@
     </div>
   </section>
 
+  <section class="content" id="profil" style="display:none;">
+    <div class="eyebrow">👤 Dein Konto</div>
+    <div class="section-head">
+      <div><h2>Mein Profil</h2></div>
+    </div>
+
+    <div class="card glass" style="padding:22px; margin-bottom:26px;">
+      <div style="display:flex; gap:24px; flex-wrap:wrap;">
+        <div>
+          <div class="card-eyebrow">Discord</div>
+          <div id="profile-discord" style="font-family:'Baloo 2',sans-serif; font-size:1.1rem;">–</div>
+        </div>
+        <div>
+          <div class="card-eyebrow">Minecraft-IGN</div>
+          <div id="profile-ign" style="font-family:'Baloo 2',sans-serif; font-size:1.1rem;">–</div>
+        </div>
+      </div>
+      <p id="profile-link-hint" style="color:var(--muted); font-size:0.82rem; margin-top:14px;"></p>
+    </div>
+
+    <div class="card glass" style="padding:22px; margin-bottom:26px;">
+      <h3 style="font-family:'Baloo 2',sans-serif; font-size:1.1rem; margin-bottom:14px;">📦 Freigeschaltete Downloads</h3>
+      <div id="profile-purchases-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
+    <div class="card glass" style="padding:22px; margin-bottom:26px;">
+      <h3 style="font-family:'Baloo 2',sans-serif; font-size:1.1rem; margin-bottom:14px;">🧾 Meine Bestellungen</h3>
+      <div id="profile-orders-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
+    <div class="card glass" style="padding:22px;" id="profile-vouches-card">
+      <h3 style="font-family:'Baloo 2',sans-serif; font-size:1.1rem; margin-bottom:14px;">⭐ Offene Bewertungen</h3>
+      <div id="profile-vouches-list" style="display:flex; flex-direction:column; gap:14px;"></div>
+    </div>
+  </section>
+
   <section class="content" id="admin" style="display:none;">
     <div class="eyebrow">⚙️ Nur für Owner sichtbar</div>
     <div class="section-head">
@@ -1059,6 +1096,97 @@
       return '★'.repeat(r) + '☆'.repeat(5 - r);
     }
 
+    async function loadProfilePage() {
+      const res = await fetch(API_BASE + '/api/me', { credentials: 'include' });
+      const me = await res.json();
+      if (!me.loggedIn) return;
+
+      document.getElementById('profile-discord').textContent = me.discord_username || 'Nicht verbunden';
+      document.getElementById('profile-ign').textContent = me.ign || 'Nicht verbunden';
+      const hint = document.getElementById('profile-link-hint');
+      if (me.connection_type === 'both') {
+        hint.textContent = 'Discord und Minecraft sind miteinander verknüpft.';
+      } else if (me.connection_type === 'discord') {
+        hint.textContent = 'Melde dich zusätzlich per Ingame-Login an, um deinen Minecraft-Account zu verknüpfen.';
+      } else {
+        hint.textContent = 'Melde dich zusätzlich mit Discord an, um Käufe und Downloads zu sehen.';
+      }
+
+      const purchasesList = document.getElementById('profile-purchases-list');
+      try {
+        const purchases = await (await fetch(API_BASE + '/api/me/purchases', { credentials: 'include' })).json();
+        purchasesList.innerHTML = purchases.length ? purchases.map(p => `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--glass-strong); border-radius:10px; padding:10px 14px;">
+            <span>${p.name}</span>
+            <a href="${p.download_url}" target="_blank" class="btn-primary" style="padding:7px 16px; font-size:0.78rem;">Download</a>
+          </div>
+        `).join('') : '<div style="color:var(--muted); font-size:0.85rem;">Noch keine Käufe gefunden.</div>';
+      } catch (e) {
+        purchasesList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem;">Fehler beim Laden.</div>';
+      }
+
+      const ordersList = document.getElementById('profile-orders-list');
+      try {
+        const orders = await (await fetch(API_BASE + '/api/me/orders', { credentials: 'include' })).json();
+        ordersList.innerHTML = orders.length ? orders.map(o => `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:var(--glass-strong); border-radius:10px; padding:10px 14px; gap:8px; flex-wrap:wrap;">
+            <span><strong>${o.product_name}</strong> — ${o.price} € <span style="color:var(--muted); font-size:0.78rem;">(${o.reference_code})</span></span>
+            <span style="color:var(--muted); font-size:0.78rem; text-transform:capitalize;">${o.status}</span>
+          </div>
+        `).join('') : '<div style="color:var(--muted); font-size:0.85rem;">Noch keine Bestellungen.</div>';
+      } catch (e) {
+        ordersList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem;">Fehler beim Laden.</div>';
+      }
+
+      const vouchesList = document.getElementById('profile-vouches-list');
+      try {
+        const pending = await (await fetch(API_BASE + '/api/me/vouches/pending', { credentials: 'include' })).json();
+        vouchesList.innerHTML = pending.length ? pending.map(v => `
+          <div class="glass" style="border-radius:12px; padding:14px 16px;">
+            <div style="margin-bottom:8px;"><strong>${v.product_name}</strong> — ${v.price} €</div>
+            <div class="profile-vouch-stars" data-order-id="${v.order_id}" style="font-size:1.3rem; letter-spacing:4px; cursor:pointer; margin-bottom:8px;">☆☆☆☆☆</div>
+            <textarea class="profile-vouch-text" data-order-id="${v.order_id}" placeholder="Wie war dein Kauf?" style="width:100%; min-height:60px; background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:10px; font-size:0.85rem; margin-bottom:8px; resize:vertical;"></textarea>
+            <button class="btn-primary profile-vouch-submit" data-order-id="${v.order_id}" style="padding:8px 18px; font-size:0.8rem;">Bewertung abschicken</button>
+          </div>
+        `).join('') : '<div style="color:var(--muted); font-size:0.85rem;">Keine offenen Bewertungen.</div>';
+
+        vouchesList.querySelectorAll('.profile-vouch-stars').forEach(el => {
+          let rating = 0;
+          el.addEventListener('click', (e) => {
+            const rect = el.getBoundingClientRect();
+            rating = Math.min(5, Math.max(1, Math.ceil((e.clientX - rect.left) / (rect.width / 5))));
+            el.textContent = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+            el.dataset.rating = rating;
+          });
+        });
+        vouchesList.querySelectorAll('.profile-vouch-submit').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const orderId = btn.dataset.orderId;
+            const starsEl = vouchesList.querySelector(`.profile-vouch-stars[data-order-id="${orderId}"]`);
+            const textEl = vouchesList.querySelector(`.profile-vouch-text[data-order-id="${orderId}"]`);
+            const rating = parseInt(starsEl.dataset.rating || '0', 10);
+            const message = textEl.value.trim();
+            if (!rating) { alert('Bitte eine Sterne-Bewertung auswählen.'); return; }
+            if (!message) { alert('Bitte einen kurzen Text schreiben.'); return; }
+            const res = await fetch(API_BASE + '/api/me/vouches/submit', {
+              method: 'POST', credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ order_id: parseInt(orderId), rating, message }),
+            });
+            const data = await res.json();
+            if (data.ok) {
+              loadProfilePage();
+              loadVouchSummary();
+            } else {
+              alert('Fehler: ' + (data.error || 'unbekannt'));
+            }
+          });
+        });
+      } catch (e) {
+        vouchesList.innerHTML = '<div style="color:var(--muted); font-size:0.85rem;">Fehler beim Laden.</div>';
+      }
+    }
+
     async function loadSession() {
       const btn = document.getElementById('loginBtn');
       const menu = document.getElementById('profileMenu');
@@ -1076,6 +1204,13 @@
             e.preventDefault();
             e.stopPropagation();
             menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+          };
+          document.getElementById('profileLink').onclick = (e) => {
+            e.preventDefault();
+            menu.style.display = 'none';
+            document.getElementById('profil').style.display = 'block';
+            document.getElementById('profil').scrollIntoView({ behavior: 'smooth' });
+            loadProfilePage();
           };
 
           // Admin-Check separat, damit "Admin-Panel" nur beim Owner erscheint
