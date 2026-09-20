@@ -172,6 +172,18 @@
 
   .nav-toggle{ display:none; background:none; color:var(--text); font-size:1.4rem; }
 
+  /* Login-Auswahl mittig im Bild, Rest der Seite abgedunkelt */
+  #loginChoiceMenu{
+    position: fixed !important;
+    top: 50% !important; left: 50% !important; right: auto !important;
+    transform: translate(-50%, -50%);
+    min-width: 260px !important;
+    padding: 14px !important;
+    z-index: 110 !important;
+    box-shadow: 0 0 0 100vmax rgba(10,5,8,0.75), 0 20px 60px rgba(0,0,0,0.6);
+  }
+  #loginChoiceMenu a{ font-size: 1rem !important; padding: 14px 18px !important; }
+
   /* ---------- HERO ---------- */
   .hero{
     position: relative;
@@ -1652,6 +1664,22 @@
       panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
     });
     document.getElementById('langPanel').addEventListener('click', (e) => e.stopPropagation());
+
+    // Nur ein Fenster gleichzeitig: ein Klick auf einen Nav-Button schließt alle anderen Panels.
+    (function () {
+      const pairs = {
+        langPillBtn: 'langPanel', wishlistBtn: 'wishlistPanel', cartBtn: 'cartPanel',
+        loginBtn: null, // Panel hängt vom Login-Status ab (loginChoiceMenu / profileMenu)
+      };
+      const all = ['langPanel', 'wishlistPanel', 'cartPanel', 'profileMenu', 'loginChoiceMenu'];
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('#langPillBtn, #wishlistBtn, #cartBtn, #loginBtn');
+        if (!btn) return;
+        const keep = pairs[btn.id] || (document.getElementById('profileMenu').style.display === 'flex' ||
+          btn.textContent.trim() !== 'Anmelden' ? 'profileMenu' : 'loginChoiceMenu');
+        all.forEach((id) => { if (id !== keep) document.getElementById(id).style.display = 'none'; });
+      }, true);
+    })();
     updateBadges();
 
     // Modal-Buttons: Favorisieren / In den Warenkorb / Jetzt kaufen
