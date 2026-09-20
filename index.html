@@ -184,6 +184,14 @@
   }
   #loginChoiceMenu a{ font-size: 1rem !important; padding: 14px 18px !important; }
 
+  /* Profil als eigenes Fenster */
+  #profil.as-modal{
+    position: fixed; inset: 0; z-index: 100;
+    overflow-y: auto;
+    padding: 70px max(20px, calc((100vw - 760px) / 2)) 40px;
+    background: rgba(10,5,8,0.94);
+  }
+
   /* ---------- HERO ---------- */
   .hero{
     position: relative;
@@ -883,6 +891,7 @@
   </section>
 
   <section class="content" id="profil" style="display:none;">
+    <button id="profilClose" aria-label="Schließen" style="position:fixed; top:20px; right:24px; width:38px; height:38px; border-radius:50%; background:rgba(0,0,0,0.5); color:var(--text); font-size:1.1rem; z-index:101;">✕</button>
     <div class="eyebrow">👤 Dein Konto</div>
     <div class="section-head">
       <div><h2>Mein Profil</h2></div>
@@ -1236,8 +1245,10 @@
           document.getElementById('profileLink').onclick = (e) => {
             e.preventDefault();
             menu.style.display = 'none';
-            document.getElementById('profil').style.display = 'block';
-            document.getElementById('profil').scrollIntoView({ behavior: 'smooth' });
+            const profil = document.getElementById('profil');
+            profil.classList.add('as-modal');
+            profil.style.display = 'block';
+            profil.scrollTop = 0;
             loadProfilePage();
           };
 
@@ -1664,6 +1675,16 @@
       panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
     });
     document.getElementById('langPanel').addEventListener('click', (e) => e.stopPropagation());
+
+    // Profil-Fenster schließen (Button, Esc)
+    const closeProfil = () => { document.getElementById('profil').style.display = 'none'; };
+    document.getElementById('profilClose').addEventListener('click', closeProfil);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProfil(); });
+
+    // Modals + Login-Menü liegen im Header (backdrop-filter macht ihn zum Bezugsrahmen für
+    // position:fixed) — nach <body> verschieben, damit sie wirklich das ganze Fenster füllen/zentrieren.
+    ['ingameLoginModal', 'orderNameModal', 'orderResultModal', 'downloadsModal', 'loginChoiceMenu']
+      .forEach((id) => { const el = document.getElementById(id); if (el) document.body.appendChild(el); });
 
     // Nur ein Fenster gleichzeitig: ein Klick auf einen Nav-Button schließt alle anderen Panels.
     (function () {
