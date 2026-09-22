@@ -208,7 +208,7 @@
     text-align: center;
     min-height: 62vh;
     overflow: hidden;
-    background-image: url('logo-banner.png');
+    background-image: url('hero-bg.png');
     background-size: cover;
     background-position: center 30%;
     background-repeat: no-repeat;
@@ -1045,7 +1045,7 @@
       </div>
       <div style="margin-top:12px;">
         <div class="card-eyebrow" style="margin-bottom:6px;">Bis zu 5 Bild-/Clip-URLs (für die Slideshow)</div>
-        <p style="color:var(--muted); font-size:0.78rem; margin-bottom:8px;">⚠️ Keine Discord-Links (cdn.discordapp.com / media.discordapp.net) — die laufen nach ein paar Tagen automatisch ab. Bild z.B. auf <code>i.imgur.com</code> hochladen und den direkten Bild-Link (endet auf .png/.jpg) einfügen.</p>
+        <p style="color:var(--muted); font-size:0.78rem; margin-bottom:8px;">⚠️ Keine Discord-Links (laufen nach ein paar Tagen ab) und kein <code>imgur.com/xxx</code> (Seite, kein Bild) — nur ein direkter Link, der auf .png/.jpg endet, z.B. <code>i.imgur.com/xxx.png</code> (Bild öffnen → Rechtsklick → „Bild-Adresse kopieren").</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <input class="prod-media" placeholder="Bild-URL 1" style="background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:8px 12px; width:160px;">
           <input class="prod-media" placeholder="Bild-URL 2" style="background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:8px 12px; width:160px;">
@@ -1375,13 +1375,21 @@
       return res.json();
     }
 
-    // Discord-CDN-Bildlinks laufen nach ein paar Tagen automatisch ab (Discord
-    // signiert sie mit ex=/is=/hm=) — roter Rahmen warnt sofort beim Einfügen.
+    // Zwei häufige Fehler bei Bild-Links: (1) Discord-CDN-Links laufen nach ein
+    // paar Tagen automatisch ab (signiert mit ex=/is=/hm=); (2) eine normale
+    // imgur.com/xxx-Seite ist kein Bild, nur "Bild-Adresse kopieren" (i.imgur.com/xxx.png)
+    // liefert einen echten direkten Link. Roter Rahmen warnt sofort beim Einfügen.
     function warnIfDiscordCdnLink(input) {
       const check = () => {
-        const bad = /(cdn\.discordapp\.com|media\.discordapp\.net)/i.test(input.value);
-        input.style.borderColor = bad ? 'var(--pink)' : '';
-        input.title = bad ? 'Discord-Link — läuft nach ein paar Tagen ab. Stattdessen z.B. i.imgur.com nutzen.' : '';
+        const v = input.value.trim();
+        const isDiscord = /(cdn\.discordapp\.com|media\.discordapp\.net)/i.test(v);
+        const isImgurPage = /^https?:\/\/(www\.)?imgur\.com\//i.test(v) && !/^https?:\/\/i\.imgur\.com\//i.test(v);
+        input.style.borderColor = (isDiscord || isImgurPage) ? 'var(--pink)' : '';
+        input.title = isDiscord
+          ? 'Discord-Link — läuft nach ein paar Tagen ab. Stattdessen z.B. i.imgur.com nutzen.'
+          : isImgurPage
+          ? 'Das ist die Imgur-Seite, kein direkter Bild-Link. Bild öffnen → Rechtsklick → "Bild-Adresse kopieren" (i.imgur.com/....png).'
+          : '';
       };
       input.addEventListener('input', check);
       check();
