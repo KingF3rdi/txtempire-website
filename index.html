@@ -1365,14 +1365,30 @@
     });
 
     // ---------- Admin-Panel ----------
+    // Zeigt Fehler sichtbar an (alert) statt sie stillschweigend zu verschlucken —
+    // vorher lud loadAdminPanel() nach jedem Klick einfach neu, egal ob die
+    // Aktion (z.B. Bilder/Preis speichern) wegen abgelaufener Session mit
+    // 401 fehlgeschlagen war. Sah aus wie "nichts passiert".
     async function adminPost(path, body) {
-      const res = await fetch(API_BASE + path, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      return res.json();
+      let res, data;
+      try {
+        res = await fetch(API_BASE + path, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        data = await res.json();
+      } catch (e) {
+        alert('Verbindung fehlgeschlagen: ' + e);
+        return { ok: false, error: String(e) };
+      }
+      if (res.status === 401) {
+        alert('Session abgelaufen oder nicht als Admin angemeldet — bitte neu einloggen.');
+      } else if (!res.ok || data.error) {
+        alert('Fehler: ' + (data.error || res.status));
+      }
+      return data;
     }
 
     // Zwei häufige Fehler bei Bild-Links: (1) Discord-CDN-Links laufen nach ein
