@@ -1044,8 +1044,13 @@
         <button class="btn-ghost glass" id="prod-add" style="padding:8px 18px; font-size:0.85rem;">+ Hinzufügen</button>
       </div>
       <div style="margin-top:12px;">
-        <div class="card-eyebrow" style="margin-bottom:6px;">Bis zu 5 Bild-/Clip-URLs (für die Slideshow)</div>
-        <p style="color:var(--muted); font-size:0.78rem; margin-bottom:8px;">⚠️ Keine Discord-Links (laufen nach ein paar Tagen ab) und kein <code>imgur.com/xxx</code> (Seite, kein Bild) — nur ein direkter Link, der auf .png/.jpg endet, z.B. <code>i.imgur.com/xxx.png</code> (Bild öffnen → Rechtsklick → „Bild-Adresse kopieren").</p>
+        <div class="card-eyebrow" style="margin-bottom:6px;">Bis zu 5 Bilder (für die Slideshow)</div>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <input type="file" id="prod-media-file" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none;">
+          <button class="btn-primary" id="prod-media-upload-btn" type="button" style="padding:8px 16px; font-size:0.82rem;">📤 Bild hochladen</button>
+          <span id="prod-media-upload-status" style="font-size:0.78rem; color:var(--muted);"></span>
+        </div>
+        <p style="color:var(--muted); font-size:0.78rem; margin-bottom:8px;">Bild direkt hochladen (wird auf der Website selbst gespeichert) — oder von Hand einen direkten Link einfügen. ⚠️ Keine Discord-Links (laufen ab) und kein <code>imgur.com/xxx</code> (Seite, kein Bild), nur <code>i.imgur.com/xxx.png</code>.</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <input class="prod-media" placeholder="Bild-URL 1" style="background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:8px 12px; width:160px;">
           <input class="prod-media" placeholder="Bild-URL 2" style="background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:8px 12px; width:160px;">
@@ -1395,6 +1400,59 @@
       check();
     }
 
+    // Bild-Datei direkt hochladen (R2 über den Worker) statt fremde Links zu
+    // verwalten. Schreibt die entstandene URL ins erste leere Bild-URL-Feld.
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function uploadImageFile(file, statusEl) {
+      if (file.size > 8 * 1024 * 1024) {
+        statusEl.textContent = 'Zu groß (max. 8 MB)';
+        return null;
+      }
+      statusEl.textContent = 'Lade hoch...';
+      try {
+        const data_base64 = await fileToBase64(file);
+        const res = await fetch(API_BASE + '/api/admin/media/upload', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content_type: file.type, data_base64 }),
+        });
+        const data = await res.json();
+        if (!data.ok) { statusEl.textContent = 'Fehler: ' + (data.error || '?'); return null; }
+        statusEl.textContent = '✓ Hochgeladen';
+        return API_BASE + data.url;
+      } catch (e) {
+        statusEl.textContent = 'Fehler beim Hochladen';
+        return null;
+      }
+    }
+
+    // onclick/onchange-Zuweisung statt addEventListener: Admin-Buttons werden bei
+    // jedem loadAdminPanel()-Aufruf neu verdrahtet, addEventListener würde sich
+    // stapeln (mehrfacher Upload pro Klick) — Zuweisung überschreibt sauber.
+    function wireImageUpload(fileInput, uploadBtn, statusEl, urlInputs) {
+      uploadBtn.onclick = () => fileInput.click();
+      fileInput.onchange = async () => {
+        const file = fileInput.files[0];
+        if (!file) return;
+        const url = await uploadImageFile(file, statusEl);
+        fileInput.value = '';
+        if (!url) return;
+        const target = urlInputs().find(i => !i.value.trim()) || urlInputs()[0];
+        if (target) {
+          target.value = url;
+          target.dispatchEvent(new Event('input'));
+        }
+      };
+    }
+
     async function loadAdminPanel() {
       // Offene Bestellungen
       const orders = await (await fetch(API_BASE + '/api/admin/orders', { credentials: 'include' })).json();
@@ -1499,6 +1557,9 @@
           <div class="prod-media-edit-row" data-id="${p.id}" hidden style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; align-items:center;">
             ${mediaInputs}
             <button data-id="${p.id}" class="prod-media-save" style="background:none; color:var(--pink-soft); font-size:0.8rem;">Bilder speichern</button>
+            <input type="file" class="prod-media-edit-file" data-id="${p.id}" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none;">
+            <button data-id="${p.id}" class="prod-media-edit-upload-btn" type="button" style="background:none; color:var(--gold); font-size:0.8rem;">📤 Hochladen</button>
+            <span class="prod-media-edit-upload-status" data-id="${p.id}" style="font-size:0.75rem; color:var(--muted);"></span>
           </div>
         </div>
       `; }).join('') || '<div style="color:var(--muted); font-size:0.85rem;">Noch keine Produkte.</div>';
@@ -1517,6 +1578,15 @@
         };
       });
       prodList.querySelectorAll('.prod-media-edit').forEach(warnIfDiscordCdnLink);
+      prodList.querySelectorAll('.prod-media-edit-upload-btn').forEach(btn => {
+        const id = btn.dataset.id;
+        wireImageUpload(
+          prodList.querySelector(`.prod-media-edit-file[data-id="${id}"]`),
+          btn,
+          prodList.querySelector(`.prod-media-edit-upload-status[data-id="${id}"]`),
+          () => Array.from(prodList.querySelectorAll(`.prod-media-edit[data-id="${id}"]`))
+        );
+      });
       prodList.querySelectorAll('.prod-media-save').forEach(btn => {
         btn.onclick = async () => {
           const id = btn.dataset.id;
@@ -1551,6 +1621,12 @@
         loadAdminPanel();
       };
       document.querySelectorAll('.prod-media').forEach(warnIfDiscordCdnLink);
+      wireImageUpload(
+        document.getElementById('prod-media-file'),
+        document.getElementById('prod-media-upload-btn'),
+        document.getElementById('prod-media-upload-status'),
+        () => Array.from(document.querySelectorAll('.prod-media'))
+      );
     }
 
     // ---------- Produkte laden & Klick -> Detail-Modal ----------
@@ -1581,20 +1657,34 @@
           const countEl = tile.querySelector('.count');
           if (!h3 || !countEl) return;
           const name = h3.textContent.trim().toLowerCase();
-          const n = countsByName[name] || 0;
+          // "Accounts"-Kachel zählt alle Verkäufer-Kategorien zusammen, nicht nur
+          // die leere "accounts"-Kategorie selbst (siehe Kommentar bei accountItems unten).
+          const n = name === 'accounts'
+            ? products.filter(p => {
+                const c = (categoryMap[p.category_id] || '').trim().toLowerCase();
+                return c && c !== 'boosting' && !['texture packs', 'schematics', 'extras', 'tutorials', 'custom sky'].includes(c);
+              }).length
+            : (countsByName[name] || 0);
           countEl.textContent = `${n} Produkt${n === 1 ? '' : 'e'}`;
         });
 
         const sorted = [...products].sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0));
         renderProductGrid(document.querySelector('#bestseller .card-grid'), sorted.slice(0, 8));
 
-        // Eigene Sektionen für Kategorien, die keine "Packs" sind (Accounts,
-        // Boosting) — dort zeigen wir ALLE Produkte der Kategorie, nicht nur
-        // die Top-8-Bestseller wie im generischen Grid oben.
-        for (const [gridId, catName] of [['accounts-grid', 'accounts'], ['boosting-grid', 'boosting']]) {
-          const items = products.filter(p => (categoryMap[p.category_id] || '').trim().toLowerCase() === catName);
-          if (items.length) renderProductGrid(document.getElementById(gridId), items);
-        }
+        // Accounts-Sektion: Der Discord-Bot postet jeden verkauften Account
+        // automatisch unter einer eigenen Kategorie pro Verkäufer (z.B. "Gonas",
+        // "Yama") — das ist NICHT unsere manuell angelegte "Accounts"-Kategorie.
+        // Alles, was keine der festen Pack-Kategorien und nicht "Boosting" ist,
+        // zählt hier als Account-Angebot.
+        const PACK_CATEGORY_NAMES = new Set(['texture packs', 'schematics', 'extras', 'tutorials', 'custom sky']);
+        const accountItems = products.filter(p => {
+          const cname = (categoryMap[p.category_id] || '').trim().toLowerCase();
+          return cname && cname !== 'boosting' && !PACK_CATEGORY_NAMES.has(cname);
+        });
+        if (accountItems.length) renderProductGrid(document.getElementById('accounts-grid'), accountItems);
+
+        const boostItems = products.filter(p => (categoryMap[p.category_id] || '').trim().toLowerCase() === 'boosting');
+        if (boostItems.length) renderProductGrid(document.getElementById('boosting-grid'), boostItems);
       } catch (e) {
         // Backend nicht erreichbar -> statische Demo-Karten bleiben stehen
       }
