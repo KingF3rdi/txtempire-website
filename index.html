@@ -639,6 +639,7 @@
               <button id="ingameCloseBtn" class="btn-ghost glass" style="padding:10px 20px; font-size:0.85rem;">Schließen</button>
             </div>
             <p id="ingameStatusText" style="color:var(--muted); font-size:0.82rem; margin-top:14px;">Warte auf deine private Ingame-Nachricht.</p>
+            <p style="color:var(--muted); font-size:0.78rem; margin-top:6px;">⏳ Kann bis zu 1 Minute dauern — bitte den Befehl nicht mehrfach senden.</p>
           </div>
         </div>
       </div>
@@ -649,10 +650,11 @@
           <div class="card-eyebrow" style="color:var(--pink-soft);">BESTELLUNG</div>
           <h2 style="font-family:'Baloo 2',sans-serif; font-size:1.4rem; margin:8px 0 10px;">Wie lautet dein Ingame-Name?</h2>
           <p style="color:var(--muted); font-size:0.85rem; margin-bottom:16px;">Wir brauchen deinen Minecraft-Namen, um deine Zahlung zuzuordnen.</p>
-          <div style="display:flex; gap:8px; margin-bottom:16px;">
+          <div id="payMethodRow" style="display:flex; gap:8px; margin-bottom:16px;">
             <button id="payMethodIngame" class="btn-primary" data-method="ingame" style="flex:1; padding:9px 14px; font-size:0.82rem;">🎮 Ingame</button>
             <button id="payMethodPaypal" class="btn-ghost glass" data-method="paypal" style="flex:1; padding:9px 14px; font-size:0.82rem;">💳 PayPal (0,19 €/Pack)</button>
           </div>
+          <p id="payMethodPaypalOnlyNote" hidden style="color:var(--muted); font-size:0.82rem; margin-bottom:16px;">💳 Diese Kategorie wird nur per PayPal bezahlt.</p>
           <input id="orderNameInput" placeholder="Dein Minecraft-Name" style="width:100%; background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:12px; color:var(--text); padding:12px 16px; font-size:0.95rem; margin-bottom:18px;">
           <div style="display:flex; gap:10px;">
             <button id="orderNameSubmit" class="btn-primary" style="padding:10px 22px; font-size:0.85rem;">Bestellung anlegen</button>
@@ -759,6 +761,14 @@
         <span class="icon">☁️</span>
         <div><span class="count">1 Produkt</span><h3>Custom Sky</h3></div>
       </a>
+      <a class="cat-tile t2 glass" href="#accounts" onclick="event.preventDefault(); showPage('accounts');">
+        <span class="icon">🎮</span>
+        <div><span class="count">0 Produkte</span><h3>Accounts</h3></div>
+      </a>
+      <a class="cat-tile t4 glass" href="#boosting" onclick="event.preventDefault(); showPage('boosting');">
+        <span class="icon">🚀</span>
+        <div><span class="count">0 Produkte</span><h3>Boosting</h3></div>
+      </a>
     </div>
   </section>
 
@@ -820,6 +830,32 @@
           </div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <section class="content" id="accounts" style="display:none;">
+    <div class="eyebrow">🎮 Accounts</div>
+    <div class="section-head">
+      <div>
+        <h2>Account-Verkauf.</h2>
+        <p>Nur per PayPal — Vorschau-Bilder direkt am Angebot.</p>
+      </div>
+    </div>
+    <div class="card-grid" id="accounts-grid">
+      <p style="color:var(--muted); font-size:0.85rem;">Aktuell keine Accounts im Angebot.</p>
+    </div>
+  </section>
+
+  <section class="content" id="boosting" style="display:none;">
+    <div class="eyebrow">🚀 Boosting</div>
+    <div class="section-head">
+      <div>
+        <h2>Boosting.</h2>
+        <p>Rang- und Tier-Boosts — nur per PayPal.</p>
+      </div>
+    </div>
+    <div class="card-grid" id="boosting-grid">
+      <p style="color:var(--muted); font-size:0.85rem;">Aktuell keine Boosts im Angebot.</p>
     </div>
   </section>
 
@@ -982,6 +1018,9 @@
         <input id="cat-name" placeholder="Name" style="background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:8px 12px; width:150px;">
         <input id="cat-slug" placeholder="slug" style="background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:8px 12px; width:120px;">
         <input id="cat-icon" placeholder="Icon (Emoji)" style="background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:8px 12px; width:110px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; color:var(--muted);">
+          <input id="cat-paypal-only" type="checkbox"> Nur PayPal
+        </label>
         <button class="btn-ghost glass" id="cat-add" style="padding:8px 18px; font-size:0.85rem;">+ Hinzufügen</button>
       </div>
     </div>
@@ -1051,7 +1090,7 @@
     toggle.addEventListener('click', () => links.classList.toggle('open'));
 
     // ---------- Nav: sofortiges Umschalten statt Scroll-Animation ----------
-    const PAGE_SECTIONS = ['shop', 'kategorien', 'bestseller', 'deal', 'bewertungen'];
+    const PAGE_SECTIONS = ['shop', 'kategorien', 'bestseller', 'accounts', 'boosting', 'deal', 'bewertungen'];
     function showPage(target) {
       PAGE_SECTIONS.forEach(id => {
         const el = document.getElementById(id);
@@ -1380,7 +1419,7 @@
       const catList = document.getElementById('admin-categories-list');
       catList.innerHTML = categories.map(c => `
         <div style="display:flex; align-items:center; justify-content:space-between; background:var(--glass-strong); border-radius:10px; padding:8px 14px;">
-          <span>${c.icon || '✦'} ${c.name} <span style="color:var(--muted); font-size:0.78rem;">(${c.slug})</span></span>
+          <span>${c.icon || '✦'} ${c.name} <span style="color:var(--muted); font-size:0.78rem;">(${c.slug})${c.paypal_only ? ' · nur PayPal' : ''}</span></span>
           <button data-id="${c.id}" class="cat-delete" style="background:none; color:var(--muted); font-size:0.8rem;">Löschen</button>
         </div>
       `).join('') || '<div style="color:var(--muted); font-size:0.85rem;">Noch keine Kategorien.</div>';
@@ -1400,11 +1439,13 @@
         const name = document.getElementById('cat-name').value.trim();
         const slug = document.getElementById('cat-slug').value.trim();
         const icon = document.getElementById('cat-icon').value.trim() || '✦';
+        const paypal_only = document.getElementById('cat-paypal-only').checked;
         if (!name || !slug) return;
-        await adminPost('/api/admin/categories', { action: 'add', name, slug, icon });
+        await adminPost('/api/admin/categories', { action: 'add', name, slug, icon, paypal_only });
         document.getElementById('cat-name').value = '';
         document.getElementById('cat-slug').value = '';
         document.getElementById('cat-icon').value = '';
+        document.getElementById('cat-paypal-only').checked = false;
         loadAdminPanel();
       };
 
@@ -1485,6 +1526,7 @@
 
     // ---------- Produkte laden & Klick -> Detail-Modal ----------
     let categoryMap = {};
+    let categoryPaypalOnly = {};
     let slideshowTimer = null;
 
     async function loadProducts() {
@@ -1494,6 +1536,7 @@
           fetch(API_BASE + '/api/shop/products').then(r => r.json()),
         ]);
         categoryMap = Object.fromEntries(cats.map(c => [c.id, c.name]));
+        categoryPaypalOnly = Object.fromEntries(cats.map(c => [c.id, !!c.paypal_only]));
 
         if (!products.length) return; // Backend noch leer -> Demo-Karten im HTML bleiben stehen
 
@@ -1514,39 +1557,51 @@
         });
 
         const sorted = [...products].sort((a, b) => (b.sales_count || 0) - (a.sales_count || 0));
-        const grid = document.querySelector('#bestseller .card-grid');
-        grid.innerHTML = sorted.slice(0, 8).map(p => `
-          <div class="card glass" data-product='${JSON.stringify(p).replace(/'/g, "&apos;")}' style="cursor:pointer;">
-            <div class="card-thumb" style="background-image:url('${(p.media_urls && p.media_urls[0]) || ''}'); background-size:cover; background-position:center;">
-              <span class="fav-btn">★</span>
-            </div>
-            <div class="card-body">
-              <div class="card-eyebrow">${categoryMap[p.category_id] || ''}</div>
-              <h3>${p.name}</h3>
-              <div class="card-foot">
-                <span class="card-price">${p.price} €</span>
-                ${p.sales_count ? `<span class="card-sub">${p.sales_count} Käufe</span>` : ''}
-              </div>
-            </div>
-          </div>
-        `).join('');
+        renderProductGrid(document.querySelector('#bestseller .card-grid'), sorted.slice(0, 8));
 
-        grid.querySelectorAll('.card').forEach(card => {
-          const product = JSON.parse(card.dataset.product.replace(/&apos;/g, "'"));
-          card.addEventListener('click', () => openProductModal(product));
-          const fav = card.querySelector('.fav-btn');
-          if (fav) {
-            if (getList('txte_wishlist').some(x => x.id === product.id)) fav.classList.add('active');
-            fav.addEventListener('click', (e) => {
-              e.stopPropagation();
-              const nowFav = toggleWishlist(product);
-              fav.classList.toggle('active', nowFav);
-            });
-          }
-        });
+        // Eigene Sektionen für Kategorien, die keine "Packs" sind (Accounts,
+        // Boosting) — dort zeigen wir ALLE Produkte der Kategorie, nicht nur
+        // die Top-8-Bestseller wie im generischen Grid oben.
+        for (const [gridId, catName] of [['accounts-grid', 'accounts'], ['boosting-grid', 'boosting']]) {
+          const items = products.filter(p => (categoryMap[p.category_id] || '').trim().toLowerCase() === catName);
+          if (items.length) renderProductGrid(document.getElementById(gridId), items);
+        }
       } catch (e) {
         // Backend nicht erreichbar -> statische Demo-Karten bleiben stehen
       }
+    }
+
+    function renderProductGrid(grid, items) {
+      if (!grid) return;
+      grid.innerHTML = items.map(p => `
+        <div class="card glass" data-product='${JSON.stringify(p).replace(/'/g, "&apos;")}' style="cursor:pointer;">
+          <div class="card-thumb" style="background-image:url('${(p.media_urls && p.media_urls[0]) || ''}'); background-size:cover; background-position:center;">
+            <span class="fav-btn">★</span>
+          </div>
+          <div class="card-body">
+            <div class="card-eyebrow">${categoryMap[p.category_id] || ''}</div>
+            <h3>${p.name}</h3>
+            <div class="card-foot">
+              <span class="card-price">${p.price} €</span>
+              ${p.sales_count ? `<span class="card-sub">${p.sales_count} Käufe</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      grid.querySelectorAll('.card').forEach(card => {
+        const product = JSON.parse(card.dataset.product.replace(/&apos;/g, "'"));
+        card.addEventListener('click', () => openProductModal(product));
+        const fav = card.querySelector('.fav-btn');
+        if (fav) {
+          if (getList('txte_wishlist').some(x => x.id === product.id)) fav.classList.add('active');
+          fav.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const nowFav = toggleWishlist(product);
+            fav.classList.toggle('active', nowFav);
+          });
+        }
+      });
     }
 
     function openProductModal(p) {
@@ -1731,7 +1786,10 @@
         return;
       }
       document.getElementById('orderNameInput').value = '';
-      selectPayMethod('ingame');
+      const paypalOnly = !!categoryPaypalOnly[currentModalProduct.category_id];
+      selectPayMethod(paypalOnly ? 'paypal' : 'ingame');
+      document.getElementById('payMethodRow').style.display = paypalOnly ? 'none' : 'flex';
+      document.getElementById('payMethodPaypalOnlyNote').hidden = !paypalOnly;
       document.getElementById('orderNameModal').style.display = 'flex';
       document.getElementById('orderNameInput').focus();
     });
@@ -1763,7 +1821,11 @@
         const ingameBox = document.getElementById('orderResultIngameBox');
         const paypalBox = document.getElementById('orderResultPaypal');
         if (selectedPayMethod === 'paypal') {
-          document.getElementById('orderResultPaypalAmount').textContent = (0.19).toFixed(2) + ' €';
+          // Normale Packs: fester Realgeld-Preis (0,19€/Pack), unabhängig vom Ingame-Preis.
+          // PayPal-only-Kategorien (Accounts, Boosting): der Produktpreis IST bereits der Euro-Betrag.
+          const paypalOnly = !!categoryPaypalOnly[currentModalProduct.category_id];
+          const amount = paypalOnly ? Number(data.price) : 0.19;
+          document.getElementById('orderResultPaypalAmount').textContent = amount.toFixed(2) + ' €';
           document.getElementById('orderResultPaypalEmail').textContent = 'k1ngf3rdi@gmail.com';
           ingameBox.hidden = true;
           paypalBox.hidden = false;
