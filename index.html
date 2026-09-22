@@ -1039,6 +1039,7 @@
       </div>
       <div style="margin-top:12px;">
         <div class="card-eyebrow" style="margin-bottom:6px;">Bis zu 5 Bild-/Clip-URLs (für die Slideshow)</div>
+        <p style="color:var(--muted); font-size:0.78rem; margin-bottom:8px;">⚠️ Keine Discord-Links (cdn.discordapp.com / media.discordapp.net) — die laufen nach ein paar Tagen automatisch ab. Bild z.B. auf <code>i.imgur.com</code> hochladen und den direkten Bild-Link (endet auf .png/.jpg) einfügen.</p>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <input class="prod-media" placeholder="Bild-URL 1" style="background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:8px 12px; width:160px;">
           <input class="prod-media" placeholder="Bild-URL 2" style="background:var(--glass-strong); border:1px solid var(--glass-border); border-radius:10px; color:var(--text); padding:8px 12px; width:160px;">
@@ -1368,6 +1369,18 @@
       return res.json();
     }
 
+    // Discord-CDN-Bildlinks laufen nach ein paar Tagen automatisch ab (Discord
+    // signiert sie mit ex=/is=/hm=) — roter Rahmen warnt sofort beim Einfügen.
+    function warnIfDiscordCdnLink(input) {
+      const check = () => {
+        const bad = /(cdn\.discordapp\.com|media\.discordapp\.net)/i.test(input.value);
+        input.style.borderColor = bad ? 'var(--pink)' : '';
+        input.title = bad ? 'Discord-Link — läuft nach ein paar Tagen ab. Stattdessen z.B. i.imgur.com nutzen.' : '';
+      };
+      input.addEventListener('input', check);
+      check();
+    }
+
     async function loadAdminPanel() {
       // Offene Bestellungen
       const orders = await (await fetch(API_BASE + '/api/admin/orders', { credentials: 'include' })).json();
@@ -1489,6 +1502,7 @@
           row.hidden = !row.hidden;
         };
       });
+      prodList.querySelectorAll('.prod-media-edit').forEach(warnIfDiscordCdnLink);
       prodList.querySelectorAll('.prod-media-save').forEach(btn => {
         btn.onclick = async () => {
           const id = btn.dataset.id;
@@ -1522,6 +1536,7 @@
         document.querySelectorAll('.prod-media').forEach(i => i.value = '');
         loadAdminPanel();
       };
+      document.querySelectorAll('.prod-media').forEach(warnIfDiscordCdnLink);
     }
 
     // ---------- Produkte laden & Klick -> Detail-Modal ----------
