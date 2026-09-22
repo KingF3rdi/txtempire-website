@@ -909,6 +909,7 @@
         </div>
       </div>
       <p id="profile-link-hint" style="color:var(--muted); font-size:0.82rem; margin-top:14px;"></p>
+      <button id="profile-link-mc-btn" class="btn-primary" style="display:none; margin-top:10px; padding:9px 18px; font-size:0.82rem;">🎮 Minecraft verknüpfen</button>
     </div>
 
     <div class="card glass" style="padding:22px; margin-bottom:26px;">
@@ -1141,12 +1142,16 @@
       document.getElementById('profile-discord').textContent = me.discord_username || 'Nicht verbunden';
       document.getElementById('profile-ign').textContent = me.ign || 'Nicht verbunden';
       const hint = document.getElementById('profile-link-hint');
+      const linkMcBtn = document.getElementById('profile-link-mc-btn');
       if (me.connection_type === 'both') {
         hint.textContent = 'Discord und Minecraft sind miteinander verknüpft.';
+        linkMcBtn.style.display = 'none';
       } else if (me.connection_type === 'discord') {
-        hint.textContent = 'Melde dich zusätzlich per Ingame-Login an, um deinen Minecraft-Account zu verknüpfen.';
+        hint.textContent = 'Verknüpfe deinen Minecraft-Account, damit Ingame-Zahlungen automatisch erkannt werden.';
+        linkMcBtn.style.display = '';
       } else {
         hint.textContent = 'Melde dich zusätzlich mit Discord an, um Käufe und Downloads zu sehen.';
+        linkMcBtn.style.display = 'none';
       }
 
       const purchasesList = document.getElementById('profile-purchases-list');
@@ -1675,6 +1680,8 @@
       panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
     });
     document.getElementById('langPanel').addEventListener('click', (e) => e.stopPropagation());
+
+    document.getElementById('profile-link-mc-btn').addEventListener('click', () => startIngameLogin());
 
     // Profil-Fenster schließen (Button, Esc)
     const closeProfil = () => { document.getElementById('profil').style.display = 'none'; };
